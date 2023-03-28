@@ -1,4 +1,12 @@
 #include "systemcalls.h"
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+
 
 /**
  * @param cmd the command to execute with system()
@@ -17,6 +25,12 @@ bool do_system(const char *cmd)
  *   or false() if it returned a failure
 */
 
+    int ret = system(cmd);
+    if (ret != 0)
+    {
+        //perror("Exec failed!\n");
+        return false;
+    }
     return true;
 }
 
@@ -58,8 +72,38 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
-
     va_end(args);
+    
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        int execret = execv(command[0], &command[0]);
+        if (execret != 0)
+        {
+            //perror("Exec failed!\n");
+            exit(1);
+        }
+    }
+    else if (pid == -1)
+    {
+        //perror("Fork failed!\n");
+    }
+    else
+    {
+        int status;
+        wait(&status);
+        if (WIFEXITED (status))
+        {
+            if (WEXITSTATUS(status))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
 
     return true;
 }
@@ -94,6 +138,48 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 */
 
     va_end(args);
+
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        int fd = open(outputfile, O_RDWR | O_TRUNC);
+        if (fd == -1)
+        {
+            //perror("File open failed!\n");
+            exit(1);
+        }
+        else
+        {
+            dup2(fd, 1);   // make stdout go to file
+            int execret = execv(command[0], &command[0]);
+            close(fd);
+            if (execret != 0)
+            {
+                //perror("Exec failed!\n");
+                exit(1);
+            }
+        }
+    }
+    else if (pid == -1)
+    {
+        //perror("Fork failed!\n");
+    }
+    else
+    {
+        int status;
+        wait(&status);
+        if (WIFEXITED (status))
+        {
+            if (WEXITSTATUS(status))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
 
     return true;
 }
