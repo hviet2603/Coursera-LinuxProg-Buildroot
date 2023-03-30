@@ -7,5 +7,5 @@ default: writer.c
 	$(CROSS_COMPILE)$(CC) -g -Wall -c writer.c -o writer.o
 	$(CROSS_COMPILE)$(CC) -g -Wall writer.o -o writer
 
-clean: writer
+clean: writer writer.o
 	rm writer.o writer
